@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CounterPack - build a chargeback evidence pack from your own records</title>
+<meta name="description" content="Free browser tool for small online sellers: turn your own order records into an organised chargeback evidence pack. Nothing is uploaded - everything stays in your browser.">
+<style>
+  :root {
+    --ink: #17202a; --muted: #5b6773; --line: #dde3ea; --bg: #f6f8fa;
+    --accent: #0b5fff; --accent-ink: #fff;
+    --warn-bg: #fff4e5; --warn-line: #f0a840; --bad: #b3261e; --ok: #137333;
+    --card: #ffffff; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 880px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h2 { font-size: 1.25rem; margin: 0 0 12px; }
+  h3 { font-size: 1.05rem; margin: 0 0 8px; }
+  .tagline { color: var(--muted); margin: 0 0 8px; font-size: 1.05rem; }
+  .privacy { display: inline-block; background: #e8f5e9; color: var(--ok); border: 1px solid #bfe3c6; padding: 4px 10px; border-radius: 999px; font-size: .85rem; margin-bottom: 12px; }
+  .scope { background: #eef3ff; border: 1px solid #c9d9ff; border-radius: var(--radius); padding: 10px 14px; font-size: .9rem; margin-bottom: 28px; }
+  .scope a { color: var(--accent); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 20px; }
+  .step-no { display: inline-block; background: var(--accent); color: var(--accent-ink); width: 26px; height: 26px; border-radius: 50%; text-align: center; line-height: 26px; font-size: .9rem; margin-right: 8px; }
+  .muted { color: var(--muted); }
+  /* category cards */
+  #categoryCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+  .cat-card { text-align: left; background: #fff; border: 2px solid var(--line); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; font: inherit; }
+  .cat-card:hover { border-color: #9db9f5; }
+  .cat-card.selected { border-color: var(--accent); background: #f2f7ff; }
+  .cat-card span { color: var(--muted); font-size: .88rem; }
+  .cat-card em { font-style: normal; font-size: .78rem; color: var(--muted); }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 12px; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; min-width: 220px; flex: 1; }
+  .field label { font-size: .85rem; font-weight: 600; }
+  input[type=text], input[type=email], input[type=number], input[type=date], select, textarea {
+    font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; width: 100%;
+  }
+  textarea { resize: vertical; }
+  /* checklist */
+  .ev-item { border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .ev-item.status-have { border-left-color: var(--ok); }
+  .ev-item.status-missing { border-left-color: var(--warn-line); }
+  .ev-item.status-na { border-left-color: var(--line); opacity: .75; }
+  .ev-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .type-tag { font-size: .75rem; background: #eef3ff; color: #28418c; border-radius: 999px; padding: 2px 8px; }
+  .hint { margin: 4px 0 8px; font-size: .85rem; color: var(--muted); }
+  .ev-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .pill { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .85rem; cursor: pointer; }
+  .pill.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pill input { position: absolute; opacity: 0; pointer-events: none; }
+  /* pack */
+  .pack-status { border-radius: 8px; padding: 10px 14px; font-weight: 600; margin-bottom: 14px; }
+  .pack-status.notready { background: var(--warn-bg); border: 1px solid var(--warn-line); color: #7a4d00; }
+  .pack-status.ready { background: #e8f5e9; border: 1px solid #bfe3c6; color: var(--ok); }
+  #narrative { min-height: 180px; font-family: inherit; }
+  #gapsList li { margin-bottom: 4px; }
+  #gapsList li.ok { color: var(--ok); list-style: none; }
+  .type-group h4 { margin: 12px 0 4px; }
+  .type-group ul { margin: 0; padding-left: 18px; }
+  .type-group li { margin-bottom: 4px; }
+  .type-group li b { margin-left: 8px; }
+  .type-group li.st-have b { color: var(--ok); }
+  .type-group li.st-missing b { color: var(--bad); }
+  .type-group li small { display: block; color: var(--muted); margin-left: 0; }
+  .btn { font: inherit; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn:hover { filter: brightness(.96); }
+  .btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  /* honesty */
+  .honesty ul { padding-left: 20px; }
+  .honesty li { margin-bottom: 6px; }
+  footer { color: var(--muted); font-size: .85rem; text-align: center; margin-top: 24px; }
+  footer a { color: var(--accent); }
+  /* calculator */
+  .calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+  #calcOut { margin-top: 12px; }
+  /* print */
+  #printPack { display: none; }
+  @page { size: A4; margin: 16mm; }
+  @media print {
+    main { display: none !important; }
+    body { background: #fff; }
+    #printPack { display: block; font-size: 12pt; color: #000; }
+    .pp-warning { color: #b3261e; font-weight: 700; border: 1px solid #b3261e; padding: 6px 10px; }
+    .pp-note { border: 1px solid #888; padding: 6px 10px; background: #f5f5f5; }
+    #printPack h1 { font-size: 16pt; margin-bottom: 2px; }
+    #printPack h2 { font-size: 13pt; margin: 14px 0 6px; }
+    #printPack h3 { font-size: 12pt; margin: 10px 0 4px; }
+    .pp-meta { color: #333; }
+    .pp-foot { font-size: 9pt; color: #555; margin-top: 18px; border-top: 1px solid #999; padding-top: 6px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>CounterPack</h1>
+    <p class="tagline">Turn your own order records into an organised chargeback evidence pack - before the deadline, without the panic.</p>
+    <span class="privacy">✔ Everything runs in your browser. Nothing is uploaded or sent anywhere.</span>
+    <div class="scope">
+      Built around <strong>Stripe's published dispute guidance</strong>, checked 12 Nov 2026 against
+      <a href="https://docs.stripe.com/disputes/reason-codes-defense-requirements">reason codes</a>,
+      <a href="https://docs.stripe.com/disputes/best-practices">evidence best practices</a> and
+      <a href="https://docs.stripe.com/disputes/categories">categories</a>.
+      Sell on Shopify? Shopify's own guide uses almost the same reason categories (plus "Unrecognized" - treat it like Fraudulent here) but you respond inside the Shopify admin, which bundles evidence differently: read <a href="https://help.shopify.com/en/manual/payments/chargebacks/chargeback-reasons">Shopify's chargeback reasons</a> and <a href="https://help.shopify.com/en/manual/payments/chargebacks/chargeback-process">responding guide</a> too.
+      Another processor (PayPal, Afterpay, a bank gateway)? Their process and limits differ - check their own dispute docs before relying on this.
+    </div>
+  </header>
+
+  <section id="step1">
+    <h2><span class="step-no">1</span>What kind of dispute is it?</h2>
+    <p class="muted">Pick the category from the dispute notice in your processor dashboard. The checklist below rebuilds itself for that category.</p>
+    <div id="categoryCards"></div>
+    <div class="row">
+      <div class="field" style="max-width:260px">
+        <label for="reasonCode">Reason code on the notice (optional)</label>
+        <input type="text" id="reasonCode" placeholder="e.g. 13.1, 10.4, 4853">
+      </div>
+    </div>
+  </section>
+
+  <section id="step2">
+    <h2><span class="step-no">2</span>What evidence do you actually have?</h2>
+    <p class="muted">Be honest here - the pack flags whatever is missing instead of pretending it exists. Stripe accepts one combined file per evidence type, so notes help you remember what goes where.</p>
+    <p id="checklistEmpty" class="muted">← Pick a dispute category first.</p>
+    <div id="checklist"></div>
+  </section>
+
+  <section id="step3">
+    <h2><span class="step-no">3</span>Your order facts</h2>
+    <p class="muted">Only what you enter is used. Missing pieces show up as <strong>[MISSING - FILL IN BEFORE SUBMITTING]</strong> markers - nothing is invented for you.</p>
+    <h3>Order</h3>
+    <div class="row" id="fieldsOrder"></div>
+    <h3>Customer</h3>
+    <div class="row" id="fieldsCustomer"></div>
+    <h3>Fulfilment</h3>
+    <div class="row" id="fieldsFulfilment"></div>
+    <h3>Resolution so far</h3>
+    <div class="row" id="fieldsResolution"></div>
+  </section>
+
+  <section id="step4">
+    <h2><span class="step-no">4</span>Your evidence pack</h2>
+    <div id="packStatus" class="pack-status notready"></div>
+
+    <h3>Response summary <small class="muted">(edit freely - it goes in your processor's text field)</small></h3>
+    <textarea id="narrative" aria-label="Response summary"></textarea>
+    <div class="btnrow">
+      <button type="button" class="btn" id="regenNarrative">Regenerate from facts</button>
+      <button type="button" class="btn" id="copyBtn">Copy summary text</button>
+    </div>
+
+    <h3 style="margin-top:18px">Timeline</h3>
+    <ul id="timeline"></ul>
+
+    <h3>Evidence inventory - records you attach separately, grouped by upload type</h3>
+    <div id="evidenceByType"></div>
+
+    <h3>Gaps to resolve before you submit</h3>
+    <ul id="gapsList"></ul>
+
+    <h3>Stripe's current formatting rules</h3>
+    <ul id="submissionRules"></ul>
+
+    <div class="btnrow">
+      <button type="button" class="btn primary" id="printBtn">Print / save as PDF</button>
+      <button type="button" class="btn" id="sampleBtn">Load sample dispute</button>
+      <button type="button" class="btn" id="clearBtn">Clear everything</button>
+    </div>
+    <p class="muted" style="margin-top:10px">The PDF is an organiser, not your response itself: it lays out your summary, timeline and which records go where. Your actual records (tracking screenshots, receipts, emails) are never inside it - you attach them, one combined file per type, in your own processor dashboard. <strong>You</strong> review and submit - this tool never sends anything, and a ticked box only means <em>you said</em> you have the record, not that it meets the network's rules.</p>
+  </section>
+
+  <section id="calc">
+    <h2>Should you fight this one?</h2>
+    <p class="muted">Just your own numbers - no odds and no predictions anywhere. Dispute fees usually apply win or lose (check your Stripe pricing page for yours), and even strong cases lose sometimes. Only you can judge how strong your evidence is.</p>
+    <div class="calc-grid">
+      <div class="field"><label for="c_amount">Disputed amount</label><input type="number" id="c_amount" min="0" step="0.01" placeholder="49.00"></div>
+      <div class="field"><label for="c_fee">Dispute fee (yours)</label><input type="number" id="c_fee" min="0" step="0.01" placeholder="e.g. 15 or 25"></div>
+      <div class="field"><label for="c_hours">Hours to prepare</label><input type="number" id="c_hours" min="0" step="0.5" placeholder="1"></div>
+      <div class="field"><label for="c_rate">Value of your hour</label><input type="number" id="c_rate" min="0" step="0.01" placeholder="25"></div>
+    </div>
+    <div id="calcOut"></div>
+  </section>
+
+  <section class="honesty">
+    <h2>What this tool does - and doesn't</h2>
+    <ul>
+      <li><strong>Assembles, never invents.</strong> The pack contains only facts you entered. Missing items are flagged as gaps, not filled with plausible-sounding text.</li>
+      <li><strong>Your records, your call.</strong> Attach only genuine records. Never alter, fake or embellish evidence - that's fraud, and it can cost you your processor account.</li>
+      <li><strong>No outcome promises.</strong> The cardholder's bank decides disputes. Nobody can guarantee a win, and this tool doesn't try.</li>
+      <li><strong>Not legal advice.</strong> For large or repeated disputes, talk to a professional.</li>
+      <li><strong>Private by design.</strong> Data is stored only in this browser (local storage) so you can come back to it. Use "Clear everything" on shared computers.</li>
+      <li><strong>Protect your customer's data.</strong> Your pack will contain personal order details. Redact anything irrelevant before you submit, and only include what the dispute needs.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>CounterPack · free, runs entirely in your browser · dispute guidance sourced from Stripe's and Shopify's published documentation, checked 12-13 Nov 2026</p>
+  </footer>
+</main>
+
+<div id="printPack" aria-hidden="true"></div>
+
+<script src="packlogic.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
