@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CounterPack - build a chargeback evidence pack from your own records</title>
-<meta name="description" content="Free browser tool for small online sellers: turn your own order records into an organised chargeback evidence pack. Nothing is uploaded - everything stays in your browser.">
+<meta name="description" content="Free browser tool for small online sellers: turn your own order records into an organised chargeback evidence pack. Nothing is uploaded or saved - everything stays in this open page.">
 <style>
   :root {
     --ink: #17202a; --muted: #5b6773; --line: #dde3ea; --bg: #f6f8fa;
@@ -54,7 +54,7 @@
   /* pack */
   .pack-status { border-radius: 8px; padding: 10px 14px; font-weight: 600; margin-bottom: 14px; }
   .pack-status.notready { background: var(--warn-bg); border: 1px solid var(--warn-line); color: #7a4d00; }
-  .pack-status.ready { background: #e8f5e9; border: 1px solid #bfe3c6; color: var(--ok); }
+  .pack-status.review { background: #eef4fb; border: 1px solid #b8cfe8; color: #1d4e89; }
   #narrative { min-height: 180px; font-family: inherit; }
   #gapsList li { margin-bottom: 4px; }
   #gapsList li.ok { color: var(--ok); list-style: none; }
@@ -99,7 +99,7 @@
   <header>
     <h1>CounterPack</h1>
     <p class="tagline">Turn your own order records into an organised chargeback evidence pack - before the deadline, without the panic.</p>
-    <span class="privacy">✔ Everything runs in your browser. Nothing is uploaded or sent anywhere.</span>
+    <span class="privacy">✔ Everything runs in your browser. Nothing is uploaded, sent or saved - closing the tab discards what you entered.</span>
     <div class="scope">
       Built around <strong>Stripe's published dispute guidance</strong>, checked 12 Nov 2026 against
       <a href="https://docs.stripe.com/disputes/reason-codes-defense-requirements">reason codes</a>,
@@ -192,7 +192,7 @@
       <li><strong>Your records, your call.</strong> Attach only genuine records. Never alter, fake or embellish evidence - that's fraud, and it can cost you your processor account.</li>
       <li><strong>No outcome promises.</strong> The cardholder's bank decides disputes. Nobody can guarantee a win, and this tool doesn't try.</li>
       <li><strong>Not legal advice.</strong> For large or repeated disputes, talk to a professional.</li>
-      <li><strong>Private by design.</strong> Data is stored only in this browser (local storage) so you can come back to it. Use "Clear everything" on shared computers.</li>
+      <li><strong>Private by design.</strong> Nothing you enter is uploaded, sent or saved anywhere - it lives only in this open page and is discarded when you close it. (If you used an earlier version that saved data in this browser, that old stored copy is wiped the moment this page loads.)</li>
       <li><strong>Protect your customer's data.</strong> Your pack will contain personal order details. Redact anything irrelevant before you submit, and only include what the dispute needs.</li>
     </ul>
   </section>

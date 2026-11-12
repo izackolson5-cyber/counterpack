@@ -160,6 +160,7 @@
     { id: 'shipDate', label: 'Ship date', type: 'date', group: 'fulfilment' },
     { id: 'deliveryDate', label: 'Delivery date (per carrier)', type: 'date', group: 'fulfilment' },
     { id: 'refundIssued', label: 'Refund already issued?', type: 'select', options: ['', 'no', 'yes - full', 'yes - partial'], group: 'resolution' },
+    { id: 'receiptNote', label: 'Order confirmation / receipt sent to customer', placeholder: 'e.g. Emailed automatically at purchase on 1 Oct 2026', group: 'resolution' },
     { id: 'refundDate', label: 'Refund date (if issued)', type: 'date', group: 'resolution' },
     { id: 'cancellationDate', label: 'Cancellation request date (if any)', type: 'date', group: 'resolution' },
     { id: 'commsSummary', label: 'Key customer messages (short factual excerpts)', type: 'textarea', placeholder: 'e.g. 12 Mar - customer emailed "where is my order"; replied same day with tracking link.', group: 'resolution' },
@@ -243,30 +244,56 @@
         var d = 'My carrier records show the order as delivered on ' + val(input, 'deliveryDate');
         if (val(input, 'carrier')) d += ' per ' + val(input, 'carrier');
         if (val(input, 'trackingNumber')) d += ' (tracking ' + val(input, 'trackingNumber') + ')';
-        parts.push(d + '. The delivery confirmation is attached separately. ' + gap('check the carrier proof shows the FULL delivery address - Stripe requires the full address, not just city/postcode'));
+        if (has(input, 'delivery')) {
+          parts.push(d + '. The delivery confirmation is attached separately.');
+        } else {
+          parts.push(d + '. ' + gap('attach the carrier delivery confirmation - it must show the FULL delivery address, not just city/postcode'));
+          gaps.push('Delivery date entered but the delivery proof is not marked as available.');
+        }
       } else {
         gaps.push('No delivery confirmation provided - without carrier proof this category is very hard to answer.');
       }
     }
     if (cat === 'product_unacceptable') {
-      parts.push('The product was presented at purchase as described in the product listing from that time, which I attach separately. ' + gap('confirm the listing screenshot is attached'));
+      if (has(input, 'listing')) {
+        parts.push('The product was presented at purchase as described in the product listing from that time, which I attach separately.');
+      } else {
+        gaps.push('Product listing as shown at purchase not marked as available - without it there is little to answer a not-as-described claim with.');
+      }
       if (!val(input, 'commsSummary')) gaps.push('No customer-communication excerpt provided; showing you offered help usually matters here.');
     }
     if (cat === 'credit_not_processed' || cat === 'subscription_canceled') {
       if (val(input, 'refundIssued') && val(input, 'refundIssued') !== 'no') {
-        parts.push('A ' + (val(input, 'refundIssued') === 'yes - partial' ? 'partial ' : '') + 'refund was issued' + (val(input, 'refundDate') ? ' on ' + val(input, 'refundDate') : '') + '; I attach the refund record separately.');
+        if (has(input, 'refund_proof')) {
+          parts.push('A ' + (val(input, 'refundIssued') === 'yes - partial' ? 'partial ' : '') + 'refund was issued' + (val(input, 'refundDate') ? ' on ' + val(input, 'refundDate') : '') + '; I attach the refund record separately.');
+        } else {
+          parts.push('A ' + (val(input, 'refundIssued') === 'yes - partial' ? 'partial ' : '') + 'refund was issued' + (val(input, 'refundDate') ? ' on ' + val(input, 'refundDate') : '') + '.');
+          gaps.push('Refund stated as issued but the refund record is not marked as available - attach the processor/bank record or remove the claim.');
+        }
       }
       if (val(input, 'policyExcerpt')) parts.push('Our relevant policy, agreed to at checkout, states: "' + truncate(val(input, 'policyExcerpt'), 240) + '"');
       else gaps.push('No policy excerpt provided; for cancellation/refund disputes the agreed terms are central.');
       if (cat === 'subscription_canceled' && !val(input, 'cancellationDate')) {
-        parts.push('My system records show no cancellation request was submitted before this charge. ' + gap('attach the system log showing this - the statement alone is not evidence'));
+        if (has(input, 'cancel_logs')) {
+          parts.push('My system records show no cancellation request was submitted before this charge; I attach the system log separately.');
+        } else {
+          gaps.push('No cancellation date entered and no cancellation-request log marked as available - check your system records and attach the log before claiming no request was made.');
+        }
       }
     }
     if (cat === 'duplicate') {
-      parts.push('I attach itemised receipts and payment logs for the charge(s) separately. ' + gap('edit this summary to state which applies: separate valid charges, or one temporary authorisation that was never a settled charge'));
+      if (has(input, 'receipts')) {
+        parts.push('I attach the itemised receipts for the charges separately. ' + gap('edit this summary to state which applies: separate valid charges, or one temporary authorisation that was never a settled charge'));
+      } else {
+        gaps.push('Itemised receipts not marked as available - a duplicate-charge answer needs them.');
+      }
     }
     if (cat === 'general') {
-      if (val(input, 'amount')) parts.push('The amount charged matches the itemised receipt presented to the customer at checkout, which I attach separately.');
+      if (val(input, 'amount') && has(input, 'receipt')) {
+        parts.push('The amount charged matches the itemised receipt presented to the customer at checkout, which I attach separately.');
+      } else if (val(input, 'amount')) {
+        gaps.push('Amount entered but the itemised receipt is not marked as available - attach it before claiming the charge matches it.');
+      }
     }
     if (val(input, 'commsSummary')) parts.push('Relevant customer communications: ' + truncate(val(input, 'commsSummary'), 260));
     if (val(input, 'extraNotes')) parts.push(truncate(val(input, 'extraNotes'), 260));
@@ -278,6 +305,14 @@
     var rc = (val(input, 'reasonCode') || '').toLowerCase();
     var pr = (val(input, 'processor') || '').toLowerCase();
     return rc.indexOf('10.') === 0 || rc.indexOf('visa') >= 0 || pr.indexOf('visa') >= 0;
+  }
+
+  /* True only when the seller marked that evidence item as available. Assertions
+     about attached records are gated on this - the tool never claims a record
+     exists or is attached unless the seller said they have it. */
+  function has(input, evId) {
+    var a = input && input.evidenceAnswers && input.evidenceAnswers[evId];
+    return !!(a && a.status === 'have');
   }
 
   function truncate(s, n) {
@@ -356,12 +391,17 @@
     var check = buildChecklist(input);
     var cat = CATEGORIES[input.category] || null;
     var allGaps = narr.gaps.concat(check.gaps);
+    /* Never certify readiness: even a gap-free pack is an unverified organiser,
+       and an all-N/A checklist (nothing actually available) is never ready. */
+    var ready = allGaps.length === 0 && check.haveCount > 0;
     return {
       generatedAt: (input.now || new Date().toISOString().slice(0, 10)),
-      readyToSubmit: allGaps.length === 0,
-      statusLine: allGaps.length === 0
-        ? 'All checklist items are marked available. This does NOT certify the response meets network or processor rules, and nothing is attached yet - attach each record yourself and review everything before submitting.'
-        : 'NOT READY TO SUBMIT - ' + allGaps.length + ' gap' + (allGaps.length === 1 ? '' : 's') + ' to resolve below.',
+      readyToSubmit: ready,
+      statusLine: allGaps.length > 0
+        ? 'NOT READY TO SUBMIT - ' + allGaps.length + ' gap' + (allGaps.length === 1 ? '' : 's') + ' to resolve below.'
+        : check.haveCount === 0
+          ? 'NOT READY TO SUBMIT - every item is marked not applicable, which means no evidence is attached at all.'
+          : 'All items marked. This is still only an organiser: evidence is NOT verified, nothing is attached by this tool, and this does not certify the response meets network or processor rules. Review everything yourself before submitting.',
       merchant: val(input, 'merchantName'),
       orderId: val(input, 'orderId'),
       category: cat ? cat.label : null,

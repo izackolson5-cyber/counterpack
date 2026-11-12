@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var L = window.PackLogic;
-  var STORE_KEY = 'counterpack.v1';
+  // persistence removed: nothing is stored
   var narrativeDirty = false;
 
   var $ = function (sel) { return document.querySelector(sel); };
@@ -10,24 +10,16 @@
 
   var state = { category: null, fields: {}, evidenceAnswers: {}, reasonCode: '' };
 
-  /* ---------- persistence ---------- */
-  function save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* private mode etc. */ }
-  }
-  function load() {
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) {
-        var s = JSON.parse(raw);
-        if (s && typeof s === 'object') state = Object.assign(state, s);
-      }
-    } catch (e) { /* ignore corrupt storage */ }
+  /* No persistence: entered data lives only in this open page. Wipe anything an
+     earlier version stored (shared origins make browser storage unsafe for PII). */
+  function wipeLegacyStorage() {
+    try { localStorage.removeItem('counterpack.v1'); localStorage.removeItem('disputepack.v1'); } catch (e) {}
   }
   function clearAll() {
     if (!confirm('Clear everything you entered? This cannot be undone.')) return;
     state = { category: null, fields: {}, evidenceAnswers: {}, reasonCode: '' };
     narrativeDirty = false;
-    try { localStorage.removeItem(STORE_KEY); } catch (e) {}
+    wipeLegacyStorage();
     renderAll();
   }
 
@@ -47,7 +39,6 @@
       btn.addEventListener('click', function () {
         state.category = key;
         state.evidenceAnswers = {};
-        save();
         renderCategories();
         renderChecklist();
         renderPack();
@@ -82,13 +73,12 @@
         r.addEventListener('change', function () {
           state.evidenceAnswers[ev.id] = state.evidenceAnswers[ev.id] || {};
           state.evidenceAnswers[ev.id].status = r.value;
-          save(); renderChecklist(); renderPack();
+          renderChecklist(); renderPack();
         });
       });
       row.querySelector('.ev-note').addEventListener('input', function (e) {
         state.evidenceAnswers[ev.id] = state.evidenceAnswers[ev.id] || {};
         state.evidenceAnswers[ev.id].note = e.target.value;
-        save();
       });
       wrap.appendChild(row);
     });
@@ -121,7 +111,7 @@
       input.value = state.fields[f.id] || '';
       input.addEventListener('input', function () {
         state.fields[f.id] = input.value;
-        save(); renderPack();
+        renderPack();
       });
       var lab = document.createElement('label');
       lab.setAttribute('for', 'f_' + f.id);
@@ -144,7 +134,7 @@
   function renderPack() {
     var pack = L.buildPack(collectInput());
     var banner = $('#packStatus');
-    banner.className = 'pack-status ' + (pack.readyToSubmit ? 'ready' : 'notready');
+    banner.className = 'pack-status ' + (pack.readyToSubmit ? 'review' : 'notready');
     banner.textContent = pack.statusLine;
 
     var ta = $('#narrative');
@@ -187,7 +177,7 @@
         var div = document.createElement('div');
         div.className = 'type-group';
         var rows = grp.items.map(function (i) {
-          var mark = i.status === 'have' ? '✔ available - attach separately' : i.status === 'na' ? '— n/a' : '✘ MISSING';
+          var mark = i.status === 'have' ? '✔ marked available by you - still to be attached' : i.status === 'na' ? '— n/a' : '✘ MISSING';
           return '<li class="st-' + i.status + '"><span>' + L.escapeHtml(i.label) + '</span><b>' + mark + '</b>' +
             (i.note ? '<small>' + L.escapeHtml(i.note) + '</small>' : '') + '</li>';
         }).join('');
@@ -217,7 +207,7 @@
     h += '<p class="pp-meta">' + esc(pack.merchant || '[store name]') + ' · Order ' + esc(pack.orderId || '[reference]') +
       ' · ' + esc(pack.category || '[dispute category]') + (pack.reasonCode ? ' (' + esc(pack.reasonCode) + ')' : '') +
       (pack.amount ? ' · ' + esc(pack.amount) : '') + ' · Prepared ' + esc(pack.generatedAt) + '</p>';
-    h += '<p class="pp-note"><strong>This document only organises the response.</strong> The supporting records listed below are NOT inside this file - the seller attaches them, one combined file per evidence type, in their own processor dashboard.</p>';
+    h += '<p class="pp-note"><strong>This document only organises the response.</strong> The supporting records listed below are NOT inside this file - the seller attaches them, one combined file per evidence type, in their own processor dashboard. Nothing here is evidence-verified: every statement is the seller\'s own and must be checked against their records, and this document does not certify the response meets network or processor rules.</p>';
     if (!pack.readyToSubmit) h += '<p class="pp-warning">⚠ NOT READY TO SUBMIT - unresolved gaps are listed at the end. Do not send this response until they are resolved.</p>';
     h += '</div>';
     h += '<h2>Response summary</h2>';
@@ -299,7 +289,7 @@
       service: { status: 'na' }
     };
     narrativeDirty = false;
-    save();
+    wipeLegacyStorage();
     renderAll();
   }
 
@@ -313,11 +303,11 @@
 
   /* ---------- boot ---------- */
   document.addEventListener('DOMContentLoaded', function () {
-    load();
+    wipeLegacyStorage();
     renderAll();
     if (new URLSearchParams(location.search).get('sample') === '1') fillSample();
 
-    $('#reasonCode').addEventListener('input', function (e) { state.reasonCode = e.target.value; save(); renderPack(); });
+    $('#reasonCode').addEventListener('input', function (e) { state.reasonCode = e.target.value; renderPack(); });
     $('#narrative').addEventListener('input', function () { narrativeDirty = true; renderPack(); });
     $('#printBtn').addEventListener('click', function () { window.print(); });
     $('#copyBtn').addEventListener('click', function () {
