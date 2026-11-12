@@ -86,7 +86,7 @@ n = L.buildNarrative({ category: 'general', customerName: 'X', productDescriptio
 ok(n.paragraphs.join(' ').indexOf('matches the itemised receipt') === -1, 'general no receipt assertion when not have');
 ok(n.gaps.some(g => g.indexOf('itemised receipt') >= 0), 'general flags missing receipt');
 n = L.buildNarrative({ category: 'general', customerName: 'X', productDescription: 'Y', amount: '10', chargeDate: '2026-01-01', evidenceAnswers: { receipt: {status:'have'} } });
-ok(n.paragraphs.join(' ').indexOf('matches the itemised receipt') >= 0, 'general asserts receipt when have');
+ok(n.paragraphs.join(' ').indexOf('I attach the itemised receipt') >= 0, 'general receipt assertion gated on have without amount-match inference');
 // 8e. PNR: delivery assertion gated on delivery proof marked have
 n = L.buildNarrative({ category: 'product_not_received', customerName: 'X', productDescription: 'Y', amount: '10', chargeDate: '2026-01-01', deliveryDate: '2026-01-05', carrier: 'UPS', trackingNumber: 'T1', evidenceAnswers: { delivery: {status:'have'} } });
 ok(n.paragraphs.join(' ').indexOf('delivery confirmation is attached') >= 0, 'pnr asserts attach only when have');
@@ -170,5 +170,60 @@ p = L.buildPack({ category: 'fraudulent', customerName: 'X', productDescription:
 ok(p.paragraphs.join(' ').indexOf('Two separate valid orders') === -1, 'duplicate explanation not asserted in other categories');
 ok(!p.allGaps.some(g => g.indexOf('duplicate-charge explanation') >= 0), 'no duplicate-explanation gap in other categories');
 
+
+
+// --- Regression: QA 13 Nov 2026 (shared packlogic defects) ---
+// Calculator must reject non-plain numbers instead of corrupting them
+c = L.worthFighting({ amount: '1e2', fee: '15', hours: '2', hourlyRate: '25' });
+ok(c.error, 'calculator rejects 1e2 instead of corrupting it to 12');
+c = L.worthFighting({ amount: '1,200.50', fee: '15', hours: '2', hourlyRate: '25' });
+ok(!c.error && c.amount === 1200.5, 'calculator accepts comma thousands');
+c = L.worthFighting({ amount: '$49.00', fee: '0', hours: '0', hourlyRate: '0' });
+ok(!c.error && c.amount === 49, 'calculator accepts leading currency sign');
+c = L.worthFighting({ amount: '12abc', fee: '0', hours: '0', hourlyRate: '0' });
+ok(c.error, 'calculator rejects trailing junk instead of silently parsing 12');
+
+// Prepared date must be the device-local date, never the UTC date
+p = L.buildPack({ now: new Date(2026, 0, 15, 0, 30) });  // 00:30 local on 15 Jan, any zone
+ok(p.generatedAt === '2026-01-15', 'generatedAt uses device-local date at 00:30 local, got ' + p.generatedAt);
+p = L.buildPack({ now: new Date(2026, 0, 15, 23, 30) });
+ok(p.generatedAt === '2026-01-15', 'generatedAt uses device-local date at 23:30 local, got ' + p.generatedAt);
+p = L.buildPack({ now: '2026-01-15' });
+ok(p.generatedAt === '2026-01-15', 'string now override still honoured');
+
+// N/A on a normally-needed item: narrative and checklist must tell the SAME
+// story, and the gap must survive (no silent removal of a necessary fact)
+let base = { category: 'duplicate', customerName: 'A', productDescription: 'X', amount: '50', currency: 'NZD', chargeDate: '2026-10-01', evidenceAnswers: {} };
+p = L.buildPack(base);
+ok(p.allGaps.some(g => g.indexOf('Itemised receipts not marked as available') === 0), 'duplicate receipts missing keeps original phrasing');
+let naDup = Object.assign({}, base, { evidenceAnswers: { receipts: { status: 'na' } } });
+p = L.buildPack(naDup);
+ok(p.narrativeGaps.some(g => g.indexOf('Itemised receipts marked not applicable') === 0), 'narrative acknowledges the N/A mark on receipts');
+ok(p.checklist.gaps.some(g => g.indexOf('Itemised receipts marked not applicable') === 0), 'checklist lists the same N/A gap');
+ok(p.narrativeGaps.filter(g => g.indexOf('Itemised receipts marked not applicable') === 0).length === 1
+   && p.checklist.gaps.filter(g => g.indexOf('Itemised receipts marked not applicable') === 0).length === 1
+   && p.allGaps.filter(g => g.indexOf('Itemised receipts marked not applicable') === 0).length === 1,
+   'N/A gap appears exactly once in each surface (deduped in allGaps)');
+ok(p.readyToSubmit === false, 'required item marked N/A still not ready - gate not weakened');
+let naPnr = { category: 'product_not_received', customerName: 'A', productDescription: 'X', amount: '50', currency: 'NZD', chargeDate: '2026-10-01', deliveryDate: '2026-10-05', evidenceAnswers: { delivery: { status: 'na' } } };
+p = L.buildPack(naPnr);
+ok(p.narrativeGaps.some(g => g.indexOf('Proof of shipment and delivery marked not applicable') === 0), 'pnr N/A delivery acknowledged, not falsely "not marked as available"');
+ok(p.checklist.gaps.some(g => g.indexOf('Proof of shipment and delivery marked not applicable') === 0), 'pnr checklist mirrors the N/A gap');
+let naRefund = { category: 'credit_not_processed', customerName: 'A', productDescription: 'X', amount: '50', currency: 'NZD', chargeDate: '2026-10-01', refundIssued: 'yes - full', policyExcerpt: 'refunds in 14 days', evidenceAnswers: { refund_proof: { status: 'na' } } };
+p = L.buildPack(naRefund);
+ok(p.narrativeGaps.some(g => g.indexOf('Refund record marked not applicable') === 0) && p.checklist.gaps.some(g => g.indexOf('Refund record marked not applicable') === 0), 'conditional refund-proof N/A consistent across surfaces');
+let noRefund = Object.assign({}, naRefund, { refundIssued: 'no' });
+p = L.buildPack(noRefund);
+ok(!p.allGaps.some(g => g.indexOf('Refund record marked not applicable') === 0), 'no refund claimed -> no refund-proof N/A nag (condition respected)');
+
+
+
+// Shared factuality: disputed amount is not purchase total; address is not AVS.
+p = L.buildPack({category:'general',customerName:'Partial Buyer',merchantName:'Shop',productDescription:'Order item',amount:'15',currency:'NZD',chargeDate:'2026-10-01',billingAddress:'1 Street',avsResult:'no match',evidenceAnswers:{receipt:{status:'have'}}});
+ok(p.paragraphs.join(' ').indexOf('The disputed amount is NZD 15.') >= 0, 'narrative labels disputed amount explicitly');
+ok(!p.paragraphs.join(' ').includes(' for NZD 15') && !p.paragraphs.join(' ').includes('amount charged matches'), 'narrative never asserts partial dispute equals purchase total/receipt');
+ok(p.timeline[0].text === 'Customer placed the order.', 'purchase timeline makes no total claim from dispute amount');
+ok(p.background.some(b => b.label === 'Billing address' && b.value === '1 Street'), 'address label never claims AVS verification');
+ok(p.background.some(b => /AVS/.test(b.label) && b.value === 'no match'), 'AVS result stays a separate supplied fact');
 console.log(pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
