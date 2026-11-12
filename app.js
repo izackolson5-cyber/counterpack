@@ -37,6 +37,9 @@
         '<span>' + L.escapeHtml(c.blurb) + '</span>' +
         '<em>Common codes: ' + L.escapeHtml(c.codes.join(' · ')) + '</em>';
       btn.addEventListener('click', function () {
+        if (key === state.category) return;  /* re-clicking the current category must not wipe answers */
+        if (Object.keys(state.evidenceAnswers).length > 0 &&
+            !confirm('Switching the dispute category clears the evidence answers you already entered for the current category. Switch anyway?')) return;
         state.category = key;
         state.evidenceAnswers = {};
         renderCategories();
@@ -242,10 +245,10 @@
   function renderCalc() {
     var out = $('#calcOut');
     var res = L.worthFighting({
-      amount: $('#c_amount').value,
-      fee: $('#c_fee').value,
-      hours: $('#c_hours').value,
-      hourlyRate: $('#c_rate').value
+      amount: $('#c_amount').valueAsNumber,
+      fee: $('#c_fee').valueAsNumber,
+      hours: $('#c_hours').valueAsNumber,
+      hourlyRate: $('#c_rate').valueAsNumber
     });
     if (res.error) { out.innerHTML = '<p class="muted">' + L.escapeHtml(res.error) + '</p>'; return; }
     var h = '<p><strong>Cost of fighting:</strong> ' + L.escapeHtml(String(res.cost)) + ' (fee + your time)</p>';
