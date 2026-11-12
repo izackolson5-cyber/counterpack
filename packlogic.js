@@ -121,7 +121,7 @@
   var BACKGROUND_EVIDENCE = [
     { field: 'customerName', label: 'Customer name' },
     { field: 'customerEmail', label: 'Customer email' },
-    { field: 'billingAddress', label: 'Billing address (as verified by AVS)' },
+    { field: 'billingAddress', label: 'Billing address' },
     { field: 'purchaseIp', label: 'Purchase IP address' },
     { field: 'productDescription', label: 'Product / service description' },
     { field: 'receiptNote', label: 'Receipt sent to customer (order confirmation)' }
@@ -194,7 +194,7 @@
   function buildTimeline(input) {
     var events = [];
     function add(date, text) { if (date) events.push({ date: date, text: text }); }
-    add(val(input, 'chargeDate'), 'Customer placed the order' + (money(input) ? ' for ' + money(input) : '') + '.');
+    add(val(input, 'chargeDate'), 'Customer placed the order.');
     add(val(input, 'shipDate'), 'Order shipped' + (val(input, 'carrier') ? ' via ' + val(input, 'carrier') : '') + (val(input, 'trackingNumber') ? ' (tracking ' + val(input, 'trackingNumber') + ')' : '') + '.');
     add(val(input, 'deliveryDate'), 'The seller reports carrier records showing the order as delivered.');
     add(val(input, 'cancellationDate'), 'Customer submitted a cancellation request.');
@@ -205,6 +205,42 @@
 
   /* Narrative: assembled strictly from provided values. Missing core facts become
      unmistakable gap placeholders in the text AND entries in the gaps list. */
+  function markedNa(input, evId) {
+    var a = input && input.evidenceAnswers && input.evidenceAnswers[evId];
+    return !!(a && a.status === 'na');
+  }
+  /* One shared phrasing used by BOTH the narrative and the checklist when the
+     seller marks a normally-needed item not applicable, so the two surfaces
+     never tell different stories about the same answer. The gap stays - a
+     necessary fact is never silently dropped. */
+  function naGapText(label) {
+    return label + ' marked not applicable, but this dispute type normally needs it - if it genuinely does not apply, explain why in your response notes.';
+  }
+  /* Evidence items a dispute type can hardly be answered without. */
+  var HARD_NEEDED = {
+    product_not_received: [{ id: 'delivery', label: 'Proof of shipment and delivery' }],
+    product_unacceptable: [{ id: 'listing', label: 'Product listing as shown at purchase' }],
+    duplicate: [{ id: 'receipts', label: 'Itemised receipts' }]
+  };
+  function hardNeededGaps(input) {
+    var out = [];
+    var cat = input && input.category;
+    (HARD_NEEDED[cat] || []).forEach(function (r) {
+      if (markedNa(input, r.id)) out.push(naGapText(r.label));
+    });
+    var refundMarked = val(input, 'refundIssued') && val(input, 'refundIssued') !== 'no';
+    if ((cat === 'credit_not_processed' || cat === 'subscription_canceled') && refundMarked && markedNa(input, 'refund_proof')) {
+      out.push(naGapText('Refund record'));
+    }
+    if (cat === 'subscription_canceled' && !val(input, 'cancellationDate') && markedNa(input, 'cancel_logs')) {
+      out.push(naGapText('Cancellation-request log'));
+    }
+    if (cat === 'general' && val(input, 'amount') && markedNa(input, 'receipt')) {
+      out.push(naGapText('Itemised receipt'));
+    }
+    return out;
+  }
+
   function buildNarrative(input) {
     var gaps = [];
     var cat = CATEGORIES[input.category] ? input.category : null;
@@ -227,7 +263,8 @@
     s1 += product ? truncate(product, 160) : gap('product/service description');
     s1 += ' from ' + (merchant ? merchant : gap('your store name'));
     s1 += ' on ' + (chargeDate ? chargeDate : gap('purchase date'));
-    s1 += amount ? ' for ' + amount + '.' : ' for ' + gap('disputed amount') + '.';
+    s1 += '.';
+    s1 += ' The disputed amount is ' + (amount ? amount : gap('disputed amount')) + '.';
     parts.push(s1);
 
     if (cat === 'fraudulent') {
@@ -249,17 +286,17 @@
           parts.push(d + '. The delivery confirmation is attached separately.');
         } else {
           parts.push(d + '. ' + gap('attach the carrier delivery confirmation - it must show the FULL delivery address, not just city/postcode'));
-          gaps.push('Delivery date entered but the delivery proof is not marked as available.');
+          gaps.push(markedNa(input, 'delivery') ? naGapText('Proof of shipment and delivery') : 'Delivery date entered but the delivery proof is not marked as available.');
         }
       } else {
-        gaps.push('No delivery confirmation provided - without carrier proof this category is very hard to answer.');
+        gaps.push(markedNa(input, 'delivery') ? naGapText('Proof of shipment and delivery') : 'No delivery confirmation provided - without carrier proof this category is very hard to answer.');
       }
     }
     if (cat === 'product_unacceptable') {
       if (has(input, 'listing')) {
         parts.push('The product was presented at purchase as described in the product listing from that time, which I attach separately.');
       } else {
-        gaps.push('Product listing as shown at purchase not marked as available - without it there is little to answer a not-as-described claim with.');
+        gaps.push(markedNa(input, 'listing') ? naGapText('Product listing as shown at purchase') : 'Product listing as shown at purchase not marked as available - without it there is little to answer a not-as-described claim with.');
       }
       if (!val(input, 'commsSummary')) gaps.push('No customer-communication excerpt provided; showing you offered help usually matters here.');
     }
@@ -269,7 +306,7 @@
           parts.push('A ' + (val(input, 'refundIssued') === 'yes - partial' ? 'partial ' : '') + 'refund was issued' + (val(input, 'refundDate') ? ' on ' + val(input, 'refundDate') : '') + '; I attach the refund record separately.');
         } else {
           parts.push('A ' + (val(input, 'refundIssued') === 'yes - partial' ? 'partial ' : '') + 'refund was issued' + (val(input, 'refundDate') ? ' on ' + val(input, 'refundDate') : '') + '.');
-          gaps.push('Refund stated as issued but the refund record is not marked as available - attach the processor/bank record or remove the claim.');
+          gaps.push(markedNa(input, 'refund_proof') ? naGapText('Refund record') : 'Refund stated as issued but the refund record is not marked as available - attach the processor/bank record or remove the claim.');
         }
       }
       if (val(input, 'policyExcerpt')) parts.push('Our relevant policy, agreed to at checkout, states: "' + truncate(val(input, 'policyExcerpt'), 240) + '"');
@@ -278,7 +315,7 @@
         if (has(input, 'cancel_logs')) {
           parts.push('My system records show no cancellation request was submitted before this charge; I attach the system log separately.');
         } else {
-          gaps.push('No cancellation date entered and no cancellation-request log marked as available - check your system records and attach the log before claiming no request was made.');
+          gaps.push(markedNa(input, 'cancel_logs') ? naGapText('Cancellation-request log') : 'No cancellation date entered and no cancellation-request log marked as available - check your system records and attach the log before claiming no request was made.');
         }
       }
     }
@@ -286,7 +323,7 @@
       if (has(input, 'receipts')) {
         parts.push('I attach the itemised receipts for the charges separately.');
       } else {
-        gaps.push('Itemised receipts not marked as available - a duplicate-charge answer needs them.');
+        gaps.push(markedNa(input, 'receipts') ? naGapText('Itemised receipts') : 'Itemised receipts not marked as available - a duplicate-charge answer needs them.');
       }
       /* The explanation is the seller's own: no default assertion about which
          case applies (separate charges, authorisation hold, or seller error). */
@@ -298,9 +335,9 @@
     }
     if (cat === 'general') {
       if (val(input, 'amount') && has(input, 'receipt')) {
-        parts.push('The amount charged matches the itemised receipt presented to the customer at checkout, which I attach separately.');
+        parts.push('I attach the itemised receipt for the seller to compare with the disputed amount. This organiser does not verify that the amounts match.');
       } else if (val(input, 'amount')) {
-        gaps.push('Amount entered but the itemised receipt is not marked as available - attach it before claiming the charge matches it.');
+        gaps.push(markedNa(input, 'receipt') ? naGapText('Itemised receipt') : 'Amount entered but the itemised receipt is not marked as available - attach it before claiming the charge matches it.');
       }
     }
     if (val(input, 'commsSummary')) parts.push('Relevant customer communications: ' + truncate(val(input, 'commsSummary'), 260));
@@ -345,6 +382,7 @@
     });
     var gaps = items.filter(function (i) { return i.status === 'missing'; })
       .map(function (i) { return i.label + ' - not provided.'; });
+    gaps.push.apply(gaps, hardNeededGaps(input));
     BACKGROUND_EVIDENCE.forEach(function (b) {
       if (!val(input, b.field)) gaps.push(b.label + ' (background evidence) not provided.');
     });
@@ -382,9 +420,20 @@
 
   function num(v) {
     if (v == null || v === '') return null;
-    var n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ''));
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    /* Strict: accept plain decimals (optional commas / leading currency sign)
+       and reject anything else outright. Silent character-stripping corrupted
+       values like "1e2" into "12" - a wrong number is worse than an error. */
+    var s = String(v).trim().replace(/,/g, '');
+    if (!/^[$]?\d+(\.\d+)?$/.test(s)) return null;
+    var n = parseFloat(s.replace('$', ''));
     return isNaN(n) ? null : n;
   }
+
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  /* Device-local calendar date (never UTC shift: a seller in UTC+13 printing
+     after breakfast must see today's date, not yesterday's). */
+  function localDateStr(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 
   function escapeHtml(s) {
     return String(s == null ? '' : s)
@@ -398,12 +447,12 @@
     var narr = buildNarrative(input);
     var check = buildChecklist(input);
     var cat = CATEGORIES[input.category] || null;
-    var allGaps = narr.gaps.concat(check.gaps);
+    var allGaps = narr.gaps.concat(check.gaps).filter(function (g, i, arr) { return arr.indexOf(g) === i; });
     /* Never certify readiness: even a gap-free pack is an unverified organiser,
        and an all-N/A checklist (nothing actually available) is never ready. */
     var ready = allGaps.length === 0 && check.haveCount > 0;
     return {
-      generatedAt: (input.now || new Date().toISOString().slice(0, 10)),
+      generatedAt: (input.now ? (input.now instanceof Date ? localDateStr(input.now) : String(input.now)) : localDateStr(new Date())),
       readyToSubmit: ready,
       statusLine: allGaps.length > 0
         ? 'NOT READY TO SUBMIT - ' + allGaps.length + ' gap' + (allGaps.length === 1 ? '' : 's') + ' to resolve below.'
@@ -420,7 +469,7 @@
       timeline: narr.timeline,
       narrativeGaps: narr.gaps,
       checklist: check,
-      background: BACKGROUND_EVIDENCE.map(function (b) { return { label: b.label, value: val(input, b.field) }; }),
+      background: BACKGROUND_EVIDENCE.map(function (b) { return { label: b.label, value: val(input, b.field) }; }).concat(val(input, 'avsResult') ? [{ label: 'AVS result (seller-provided)', value: val(input, 'avsResult') }] : []),
       submissionRules: SUBMISSION_RULES.slice(),
       allGaps: allGaps
     };
@@ -439,6 +488,7 @@
     buildChecklist: buildChecklist,
     buildPack: buildPack,
     worthFighting: worthFighting,
-    escapeHtml: escapeHtml
+    escapeHtml: escapeHtml,
+    localDateStr: localDateStr
   };
 }));
