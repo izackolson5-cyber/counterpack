@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to respond to a chargeback: the evidence that matters - CounterPack</title>
+<meta name="description" content="A practical guide for small online sellers: what a chargeback response needs, which evidence matters for each dispute reason, and the rules that apply to every response.">
+<link rel="canonical" href="https://izackolson5-cyber.github.io/counterpack/guide.html">
+<meta property="og:title" content="How to respond to a chargeback: the evidence that matters">
+<meta property="og:description" content="What a chargeback response needs, which evidence matters for each dispute reason, and the rules that apply to every response.">
+<meta property="og:url" content="https://izackolson5-cyber.github.io/counterpack/guide.html">
+<meta property="og:type" content="article">
+<style>
+body{margin:0;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#17202a;background:#f6f8fa}
+main{max-width:760px;margin:0 auto;padding:48px 20px 32px}
+h1{font-size:1.75rem;line-height:1.25;margin:0 0 16px;letter-spacing:-0.02em}
+h2{font-size:1.2rem;margin:32px 0 8px}
+p{margin:0 0 12px}
+.lede{color:#5b6773;font-size:1.05rem}
+.ev{background:#fff;border:1px solid #dde3ea;border-left:4px solid #0b5fff;border-radius:8px;padding:12px 16px;margin-bottom:12px}
+.ev h3{margin:0 0 6px;font-size:1rem}
+.ev p{margin:0;font-size:.95rem}
+.rule{background:#fff4e5;border:1px solid #f0a840;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:.95rem}
+.cta{margin-top:40px;background:#fff;border:1px solid #dde3ea;border-radius:10px;padding:20px}
+.cta a.btn{display:inline-block;background:#0b5fff;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-weight:600}
+a{color:#0b5fff}
+nav{max-width:760px;margin:0 auto;padding:16px 20px;font-size:14px}
+nav a{color:#0b5fff;text-decoration:none}
+footer{max-width:760px;margin:0 auto;padding:24px 20px 48px;font-size:13px;color:#5b6773;text-align:center}
+</style>
+</head>
+<body>
+<nav><a href="/counterpack/">&larr; CounterPack - free chargeback evidence pack builder</a></nav>
+<main>
+<h1>How to respond to a chargeback: the evidence that matters</h1>
+<p class="lede">When a customer disputes a charge, you respond through your payment provider - Stripe, PayPal, Shopify Payments or whoever processed the payment - and you respond by the deadline shown in your dashboard. Miss the deadline and the dispute is usually lost automatically, whatever the facts were.</p>
+
+<h2>Start with the reason code</h2>
+<p>Every dispute carries a reason code set by the card network, and the evidence that counts depends on it. The reason tells you what the customer's bank is actually asking. Stripe publishes the full list of <a href="https://docs.stripe.com/disputes/categories">dispute categories</a> and the <a href="https://docs.stripe.com/disputes/reason-codes-defense-requirements">defence requirements per reason code</a>; Shopify's <a href="https://help.shopify.com/en/manual/payments/chargebacks/chargeback-reasons">chargeback reasons</a> page maps the same ground for Shopify Payments. Read the one that matches your dispute before you collect anything.</p>
+
+<h2>What matters, reason by reason</h2>
+<div class="ev"><h3>Fraudulent ("I didn't make this purchase")</h3><p>The bank wants proof the real cardholder took part: AVS and CVC check results from your processor, an IP address matching the billing or delivery area, tracking showing delivery to the verified address, any emails or messages from the customer about the order, and a history of previous undisputed orders from the same customer if you have one.</p></div>
+<div class="ev"><h3>Product not received</h3><p>Delivery proof is the whole game: the tracking number, a "delivered" scan dated before the dispute was opened, a signature if you have one, and the delivery address matching the order. If it genuinely has not arrived, a shipping status plus a refund often costs less than fighting.</p></div>
+<div class="ev"><h3>Product unacceptable / not as described</h3><p>Show the listing as it was at the time of sale: the description and photos the customer saw, your published returns policy and how it was shown at checkout, and any messages where the customer described the problem (or never raised one).</p></div>
+<div class="ev"><h3>Credit not processed ("I returned it / cancelled and got no refund")</h3><p>Your refund policy as displayed at purchase, the timeline of the return or cancellation, and why a refund was or was not due under that policy. If you actually owe the refund, issue it - disputing it costs a fee on top.</p></div>
+<div class="ev"><h3>Duplicate</h3><p>Evidence that the two charges were for two distinct things: separate order records, separate deliveries or downloads, separate receipts.</p></div>
+<div class="ev"><h3>Subscription cancelled</h3><p>Your cancellation terms, when the customer cancelled relative to the billing date, and records showing they kept using the service after the date they claim they cancelled.</p></div>
+<div class="ev"><h3>Unrecognized ("I don't recognise this charge")</h3><p>The receipt, what your statement descriptor means, and anything connecting the customer to the order - account email, delivery address, messages. These disputes often come from a confusing statement name rather than real fraud.</p></div>
+
+<h2>Rules that apply to every response</h2>
+<div class="rule">Answer the actual reason code. Strong evidence for the wrong reason does not count.</div>
+<div class="rule">Only submit your own genuine records - real order data, real tracking, real messages. Never invent, guess or "reconstruct" evidence. That turns a lost dispute into a much bigger problem with your processor.</div>
+<div class="rule">Keep it organised and short: a plain timeline, labelled documents, no repetition. A person at the bank reads this.</div>
+<div class="rule">Submit before the deadline in your dashboard and keep copies of everything you sent.</div>
+<div class="rule">The cardholder's bank decides the dispute. Good evidence improves your odds; nothing guarantees a win, and anyone who promises one is overselling.</div>
+
+<div class="cta">
+<h2>Build your pack in a few minutes</h2>
+<p>CounterPack is a free tool that turns your own order facts into an organised chargeback evidence pack: a response draft, a timeline and a checklist of what you still need, matched to the dispute reason. It runs entirely in your browser - nothing you enter is uploaded or saved. It assembles your evidence; it never invents it, and you check every statement before you submit through your payment provider.</p>
+<p><a class="btn" href="/counterpack/">Build an evidence pack - free</a></p>
+<p style="margin-top:10px;font-size:.9rem;color:#5b6773">Handling disputes regularly? <a href="https://counterpack-pro.netlify.app/">CounterPack Pro</a> adds order CSV import, per-case deadline tracking and a saved business profile - US$9 one-time, 7-day money-back guarantee.</p>
+</div>
+</main>
+<footer>Built by ioautomations. Runs in your browser; nothing is uploaded or saved.</footer>
+</body>
+</html>
