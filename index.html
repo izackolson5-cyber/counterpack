@@ -78,6 +78,10 @@
   /* calculator */
   .calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
   #calcOut { margin-top: 12px; }
+  /* pro */
+  .pro-banner { background: #fff; border: 1px solid var(--accent); border-radius: var(--radius); padding: 10px 14px; font-size: .9rem; margin-bottom: 28px; }
+  .pro-banner a { color: var(--accent); }
+  .btnrow a.btn { text-decoration: none; display: inline-block; }
   /* print */
   #printPack { display: none; }
   @page { size: A4; margin: 16mm; }
@@ -108,6 +112,9 @@
       <a href="https://docs.stripe.com/disputes/categories">categories</a>.
       Sell on Shopify? Shopify's own guide uses almost the same reason categories (plus "Unrecognized" - treat it like Fraudulent here) but you respond inside the Shopify admin, which bundles evidence differently: read <a href="https://help.shopify.com/en/manual/payments/chargebacks/chargeback-reasons">Shopify's chargeback reasons</a> and <a href="https://help.shopify.com/en/manual/payments/chargebacks/chargeback-process">responding guide</a> too.
       Another processor (PayPal, Afterpay, a bank gateway)? Their process and limits differ - check their own dispute docs before relying on this.
+    </div>
+    <div class="pro-banner">
+      <strong>This is the free version.</strong> Handling disputes regularly? <a href="https://counterpack-pro.netlify.app/">CounterPack Pro</a> adds order CSV import, per-case deadline tracking and a saved business profile - US$9 one-time, 7-day money-back guarantee.
     </div>
   </header>
 
@@ -184,6 +191,21 @@
       <div class="field"><label for="c_rate">Value of your hour</label><input type="number" id="c_rate" min="0" step="0.01" placeholder="25"></div>
     </div>
     <div id="calcOut"></div>
+  </section>
+
+  <section id="pro">
+    <h2>CounterPack Pro - US$9 one-time</h2>
+    <p class="muted">This page is the free version: full evidence-pack builder, runs here in your browser, nothing saved. Pro is a separate one-time download for sellers who handle disputes more than once:</p>
+    <ul>
+      <li><strong>Order import</strong> - import order CSVs instead of re-typing every detail by hand.</li>
+      <li><strong>Deadline tracking</strong> - track dispute deadlines per case so nothing lapses quietly.</li>
+      <li><strong>Business profile</strong> - re-use your saved business details across every case.</li>
+      <li><strong>Same privacy rule</strong> - nothing you enter is uploaded, sent or saved anywhere.</li>
+    </ul>
+    <div class="btnrow">
+      <a class="btn primary" href="https://counterpack-pro.netlify.app/">See CounterPack Pro</a>
+    </div>
+    <p class="muted" style="margin-top:10px">One-time download. 7-day money-back guarantee. Secure checkout by Stripe.</p>
   </section>
 
   <section class="honesty">
